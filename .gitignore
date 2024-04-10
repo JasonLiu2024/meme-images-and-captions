@@ -2,3 +2,5 @@ deephumor/
 memes900k/
 reports/
 data/
+*.npy
+*.pt
