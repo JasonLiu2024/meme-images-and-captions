@@ -4,3 +4,4 @@ reports/
 data/
 *.npy
 *.pt
+.DS_Store
