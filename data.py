@@ -22,9 +22,9 @@ class Meme_n_Caption_Data_Manager:
         FILENAME_all_image_embeddings:str, FILENAME_all_caption_embeddings:str,
         FILENAME_MAP_image_index_TO_caption_indices:str):
         self.all_image_embeddings:torch.Tensor = torch.load(
-            f=FILENAME_all_image_embeddings).to(help.get_device())
+            f=FILENAME_all_image_embeddings)
         self.all_caption_embeddings:torch.Tensor = torch.load(
-            f=FILENAME_all_caption_embeddings).to(help.get_device())
+            f=FILENAME_all_caption_embeddings)
         self.MAP_image_index_TO_caption_indices:dict[int, NDArray] = np.load(
             file=FILENAME_MAP_image_index_TO_caption_indices, allow_pickle=True).item()
 
@@ -77,6 +77,7 @@ class Meme_n_Caption_Dataset_Standard(dataset.Dataset):
         INDICES_random_selection_of_images = np.random.choice(a=list(range(COUNT_OF_image_embeddings)), size=COUNT_OF_non_matching_pairs)
         # index to select caption indices from SUBSET selected by INDICES_usable_captions
         INDICES_random_selection_of_captions = np.random.choice(a=list(range(len(INDICES_usable_captions))), size=COUNT_OF_non_matching_pairs)
+        # print(f"DATASET: got + samples")
         for image_index, caption_index in zip(INDICES_random_selection_of_images, INDICES_random_selection_of_captions):
             image_embeddings.append(all_image_embeddings[image_index])
             # I get the next image in the list, using % to wrap the indexing
@@ -84,9 +85,16 @@ class Meme_n_Caption_Dataset_Standard(dataset.Dataset):
             caption_embeddings.append(all_caption_embeddings[
                 MAP_image_index_TO_caption_indices[image_index_of_a_different_image][INDICES_usable_captions][caption_index]])
             labels.append(torch.tensor(0, dtype=torch.float))
-        self.image_embeddings = torch.stack(image_embeddings)
-        self.caption_embeddings = torch.stack(caption_embeddings)
-        self.labels = torch.stack(labels)
+        # print(f"DATASET: got - samples")
+        self.image_embeddings = torch.stack(image_embeddings).to(help.get_device())
+        # print(f"DATASET: got image embeddings")
+        self.caption_embeddings = torch.stack(caption_embeddings).to(help.get_device())
+        # print(f"DATASET: got caption embeddings")
+        self.labels = torch.tensor(labels, device=help.get_device()).unsqueeze(dim=1)
+        # print(f"DATASET: got labels")
+        print(f"DATASET initialized, sizes: {self.image_embeddings.shape, self.caption_embeddings.shape, self.labels.shape}",
+            #   f"\ndevices: {self.image_embeddings.device, self.caption_embeddings.device, self.labels.device}"
+            )
     def __getitem__(self, index : int):
         return self.image_embeddings[index], self.caption_embeddings[index], self.labels[index]
     def __len__(self, ):
