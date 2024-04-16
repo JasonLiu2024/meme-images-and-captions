@@ -2,6 +2,7 @@ deephumor/
 memes900k/
 reports/
 data/
+__pycache__/
 *.npy
 *.pt
 .DS_Store
