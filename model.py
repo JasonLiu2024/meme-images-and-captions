@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import help
-from typing import Union
+from typing import Union, Any
 from torch.utils.data import dataloader
 
 arch : dict[str, int] = {
@@ -13,8 +13,8 @@ class Siamese(nn.Module):
     Twin inputs, 
     L1 distance combines embeddings,
     Binary Cross Entropy loss"""
-    def __init__(self, image_embedding_dim : int, caption_embedding_dim : int, feature_dim : int, 
-            layers : dict[str, int],
+    def __init__(self, feature_dim : int=100,
+            image_embedding_dim: int=2048, caption_embedding_dim: int=384,
             device : Union[str, None]=None):
         super().__init__()
         self.device = device if device != None else help.get_device()
@@ -30,6 +30,8 @@ class Siamese(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.projection_layer.apply(self.init_weights)
         self.shared.apply(self.init_weights)
+        self.projection_layer.to(self.device)
+        self.shared.to(self.device)
 
     def forward(self, image_embedding : int, caption_embedding : int):
         image_embedding_in_caption_embedding_space = self.projection_layer(image_embedding)
@@ -44,10 +46,11 @@ class Siamese(nn.Module):
             torch.nn.init.xavier_uniform_(m.weight)
             m.bias.data.fill_(0.01)
     
-def train(model : nn.Module, dataloader_train : dataloader.DataLoader, dataloader_validate : dataloader.DataLoader,
-        optimizer: torch.optim.Optimizer, learning_rate: float):
+def train(model : nn.Module, dataloader_train: dataloader.DataLoader,
+        hyperparameters: dict[str, Any], dataloader_validate: Union[dataloader.DataLoader, None]=None):
     model.train()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=learning_rate)
+    optimizer: torch.optim.Optimizer = hyperparameters['optimizer_type'](
+        params=model.parameters(), lr=hyperparameters['learning_rate'])
     losses = []
     loss_function = nn.BCELoss()
     for i_step, batch in enumerate(dataloader_train):

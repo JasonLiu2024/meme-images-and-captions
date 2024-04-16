@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import help
 from torch.utils.data import dataset, sampler, dataloader
 from numpy.typing import NDArray
 
@@ -21,11 +22,11 @@ class Meme_n_Caption_Data_Manager:
         FILENAME_all_image_embeddings:str, FILENAME_all_caption_embeddings:str,
         FILENAME_MAP_image_index_TO_caption_indices:str):
         self.all_image_embeddings:torch.Tensor = torch.load(
-            f=FILENAME_all_image_embeddings)
+            f=FILENAME_all_image_embeddings).to(help.get_device())
         self.all_caption_embeddings:torch.Tensor = torch.load(
-            f=FILENAME_all_caption_embeddings)
+            f=FILENAME_all_caption_embeddings).to(help.get_device())
         self.MAP_image_index_TO_caption_indices:dict[int, NDArray] = np.load(
-            file=FILENAME_MAP_image_index_TO_caption_indices, allow_pickle=True)
+            file=FILENAME_MAP_image_index_TO_caption_indices, allow_pickle=True).item()
 
     def get_dataloader(self, batch_size : int,
             RATIO_negative_samples_over_positive_samples : float,
@@ -72,8 +73,10 @@ class Meme_n_Caption_Dataset_Standard(dataset.Dataset):
                 labels.append(torch.tensor(1, dtype=torch.float))
         # generate NON-matching (i, c, l=0) pairs
         COUNT_OF_non_matching_pairs = int(len(INDICES_usable_captions) * COUNT_OF_image_embeddings * RATIO_negative_samples_over_positive_samples)
+        # index to select images i.e. keys in MAP_image_index_TO_caption_indices
         INDICES_random_selection_of_images = np.random.choice(a=list(range(COUNT_OF_image_embeddings)), size=COUNT_OF_non_matching_pairs)
-        INDICES_random_selection_of_captions = np.random.randint(size=(COUNT_OF_non_matching_pairs), low=0, high=COUNT_OF_image_embeddings - 1)
+        # index to select caption indices from SUBSET selected by INDICES_usable_captions
+        INDICES_random_selection_of_captions = np.random.choice(a=list(range(len(INDICES_usable_captions))), size=COUNT_OF_non_matching_pairs)
         for image_index, caption_index in zip(INDICES_random_selection_of_images, INDICES_random_selection_of_captions):
             image_embeddings.append(all_image_embeddings[image_index])
             # I get the next image in the list, using % to wrap the indexing
@@ -81,7 +84,6 @@ class Meme_n_Caption_Dataset_Standard(dataset.Dataset):
             caption_embeddings.append(all_caption_embeddings[
                 MAP_image_index_TO_caption_indices[image_index_of_a_different_image][INDICES_usable_captions][caption_index]])
             labels.append(torch.tensor(0, dtype=torch.float))
-
         self.image_embeddings = torch.stack(image_embeddings)
         self.caption_embeddings = torch.stack(caption_embeddings)
         self.labels = torch.stack(labels)
